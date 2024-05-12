@@ -1,12 +1,13 @@
 mod csv;
 mod base64;
 mod text;
+mod genpass;
 
 use std::path::{Path, PathBuf};
 use clap::{Parser};
 use enum_dispatch::enum_dispatch;
 
-pub use self::{csv::*, base64::*};
+pub use self::{csv::*, base64::*,text::*,genpass::*};
 
 #[derive(Debug, Parser)]
 #[command(name = "my-rcli", author, version, about, long_about = None)]

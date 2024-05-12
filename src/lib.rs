@@ -3,7 +3,6 @@ mod utils;
 mod process;
 mod cli;
 
-
 use enum_dispatch::enum_dispatch;
 pub use cli::*;
 pub use process::*;
