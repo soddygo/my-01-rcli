@@ -17,7 +17,7 @@ use super::verify_path;
 #[enum_dispatch(CmdExecutor)]
 pub enum TextSubCommand {
     #[command(about = "sign a text with a private/session key and return a signature ")]
-    Sign(TextSingOpts),
+    Sign(TextSignOpts),
     #[command(about = "verify a text with a public/session key and a signature")]
     Verify(TextVerifyOpts),
     #[command(about = "generate a key pair for signing and verifying texts")]
@@ -25,10 +25,10 @@ pub enum TextSubCommand {
 }
 
 #[derive(Debug, Parser)]
-pub struct TextSingOpts {
+pub struct TextSignOpts {
     #[arg(short, long, value_parser = verify_file, default_value = "-")]
     pub input: String,
-    #[arg(short, long, value_parser = verify_path)]
+    #[arg(short, long, value_parser = verify_file)]
     pub key: String,
     #[arg(long, default_value = "blake3", value_parser = parse_text_sign_format)]
     pub format: TextSignFormat,
@@ -50,10 +50,10 @@ pub struct TextVerifyOpts {
 
 #[derive(Debug, Parser)]
 pub struct KeyGenerateOpts {
-    #[arg(short, long, default_value = "blake3", value_parser = parse_text_sign_format)]
+    #[arg(long, default_value = "blake3", value_parser = parse_text_sign_format)]
     pub format: TextSignFormat,
 
-    #[arg(short, long, value_parser = verify_path)]
+    #[arg(long, value_parser = verify_path)]
     pub output_path: PathBuf,
 
 }
@@ -100,7 +100,7 @@ impl Display for TextSignFormat {
 }
 
 
-impl CmdExecutor for TextSingOpts {
+impl CmdExecutor for TextSignOpts {
     async fn execute(self) -> Result<()> {
         let mut reader = get_reader(&self.input)?;
         let key = get_content(&self.key)?;

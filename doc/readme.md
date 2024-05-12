@@ -17,3 +17,35 @@ cargo run base64 decode --input ./fixtures/b64.txt
 ```shell
 cargo run base64 decode --input ./fixtures/b64_decode.txt
 ```
+
+## text
+
+generate
+```shell
+cargo run text generate --output-path ./fixtures/ 
+```
+
+sign
+```shell
+cargo run text sign --input ./fixtures/b64.txt --key ./fixtures/blake3.txt 
+```
+
+verify
+```shell
+cargo run text verify --input ./fixtures/b64.txt --key ./fixtures/blake3.txt  --sig SlI5fC6LVXrTpiLsMGHWyCgGOH6JdjzHyNrTCevCBi0
+```
+
+## http
+
+server start
+```shell
+ cargo run http server  
+
+```
+
+浏览器 url访问测试:
+```url
+
+http://127.0.0.1:8080/tower/fixtures/b64.txt
+http://127.0.0.1:8080/fixtures/b64_decode.txt
+```
