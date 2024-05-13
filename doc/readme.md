@@ -48,4 +48,12 @@ server start
 
 http://127.0.0.1:8080/tower/fixtures/b64.txt
 http://127.0.0.1:8080/fixtures/b64_decode.txt
+
+```
+
+作业,目录展示
+```shell
+
+http://127.0.0.1:8080/dir/fixtures
+
 ```

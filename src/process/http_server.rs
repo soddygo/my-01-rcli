@@ -8,6 +8,7 @@ use std::time::Duration;
 use anyhow::Result;
 use axum::extract::{Path, State};
 use axum::http::{HeaderName, Request, Response, StatusCode};
+use axum::response::Html;
 use axum::Router;
 use axum::routing::get;
 use tower::{Service, ServiceBuilder, ServiceExt};
@@ -40,6 +41,7 @@ pub async fn process_http_server(path: PathBuf, port: u16) -> Result<()> {
         .nest_service("/tower", ServeDir::new(path))
 
         .route("/*path", get(file_handler))
+        .route("/dir/*path", get(dir_html_handler))
         .with_state(Arc::new(state));
     // // 将服务和路由器组合在一起
     // let app = router.into_service() // 转换为服务
@@ -48,6 +50,29 @@ pub async fn process_http_server(path: PathBuf, port: u16) -> Result<()> {
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, router).await?;
     Ok(())
+}
+
+async fn dir_html_handler(State(state): State<Arc<HttpServeState>>, Path(path): Path<String>) -> (StatusCode, Html<String>) {
+    let p = std::path::Path::new(&state.path).join(path);
+    info!("Reading file {:?}", p);
+    if p.is_dir() {
+        let mut content = "<html><body><ul>".to_string();
+        let mut read_dir = tokio::fs::read_dir(p).await.expect("Failed to read directory");
+
+        while let Some(entry) = read_dir.next_entry().await.expect("Failed to get next entry") {
+            let path = entry.path();
+            if let Some(name) = path.file_name() {
+                let name = name.to_string_lossy();
+                content += &format!("<li><a href=\"{}\">{}</a></li>", name, name);
+            }
+        }
+
+        content += "</ul></body></html>";
+        (StatusCode::OK, Html(content))
+    } else {
+        let content = tokio::fs::read_to_string(p).await.expect("Failed to read file");
+        (StatusCode::OK, Html(content))
+    }
 }
 
 
