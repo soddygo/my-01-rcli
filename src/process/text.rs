@@ -1,8 +1,9 @@
+use std::any;
 use std::collections::HashMap;
-use std::io::Read;
-use anyhow::Result;
-use chacha20poly1305::aead::OsRng;
+use std::io::{Error, ErrorKind, Read};
+use anyhow::{anyhow, Result};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+use chacha20poly1305::{aead::{AeadCore, AeadInPlace, KeyInit, OsRng}, ChaCha20Poly1305, ChaChaPoly1305, Key, Nonce};
 use crate::{process_genpass, TextSignFormat};
 
 pub trait TextSigner {
@@ -25,6 +26,12 @@ pub struct Ed25519Verifier {
     key: VerifyingKey,
 }
 
+
+pub struct ChaCha20Poly1305Wrapper {
+    key: Key,
+}
+
+
 impl TextSigner for Blake3 {
     fn sign(&self, reader: &mut dyn Read) -> Result<Vec<u8>> {
         let mut buf = Vec::new();
@@ -43,6 +50,40 @@ impl TextVerifier for Blake3 {
     }
 }
 
+
+impl TextSigner for ChaCha20Poly1305Wrapper {
+    fn sign(&self, reader: &mut dyn Read) -> Result<Vec<u8>> {
+        let mut buf = Vec::new();
+        reader.read_to_end(&mut buf)?;
+        let cipher = ChaCha20Poly1305::new(&self.key);
+        let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng); // 96-bits; unique per message
+
+        let encrypt = cipher.encrypt_in_place(&nonce, b"", &mut buf);
+
+        if encrypt.is_ok() {
+            Ok(buf)
+        } else {
+            Err(anyhow!("encrypt failed"))
+        }
+    }
+}
+
+impl TextVerifier for ChaCha20Poly1305Wrapper {
+    fn verify(&self, reader: &mut dyn Read, sig: &[u8]) -> Result<bool> {
+        let mut buf = Vec::new();
+        reader.read_to_end(&mut buf)?;
+        let cipher = ChaCha20Poly1305::new(&self.key);
+        let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng); // 96-bits; unique per message
+
+        let decrypt = cipher.decrypt_in_place(&nonce, b"", &mut buf);
+        if decrypt.is_ok() {
+            Ok(true)
+        } else {
+            Err(anyhow!("decrypt failed"))
+        }
+    }
+}
+
 impl TextSigner for Ed25519Signer {
     fn sign(&self, reader: &mut dyn Read) -> Result<Vec<u8>> {
         let mut buf = Vec::new();
@@ -53,7 +94,6 @@ impl TextSigner for Ed25519Signer {
 }
 
 impl TextVerifier for Ed25519Verifier {
-    
     fn verify(&self, reader: &mut dyn Read, sig: &[u8]) -> Result<bool> {
         let mut buf = Vec::new();
         reader.read_to_end(&mut buf)?;
@@ -80,6 +120,35 @@ impl Blake3 {
         let key = process_genpass(32, true, true, true, true)?;
         let mut map = HashMap::new();
         map.insert("blake3.txt", key.as_bytes().to_vec());
+        Ok(map)
+    }
+}
+
+impl ChaCha20Poly1305Wrapper {
+    pub fn try_new(key: impl AsRef<[u8]>) -> Result<Self> {
+        let key = key.as_ref();
+
+        // Check if the key has the correct length (32 bytes)
+        if key.len() != 32 {
+            return Err(anyhow!(Error::new(ErrorKind::InvalidData, "Key must be 32 bytes long")));
+        }
+
+        // Create a new ChaCha20Poly1305 instance with the provided key
+
+        let chaChaKey = Key::clone_from_slice(key);
+
+        Ok(Self::new(chaChaKey))
+    }
+
+    pub fn new(key: Key) -> Self {
+        Self { key }
+    }
+    fn generate() -> Result<HashMap<&'static str, Vec<u8>>> {
+        let key = ChaCha20Poly1305::generate_key(&mut OsRng);
+
+
+        let mut map = HashMap::new();
+        map.insert("ChaCha20Poly1305.txt", key.as_slice().to_vec());
         Ok(map)
     }
 }
@@ -139,6 +208,7 @@ pub fn process_text_verify(
     let verifier: Box<dyn TextVerifier> = match format {
         TextSignFormat::Blake3 => Box::new(Blake3::try_new(key)?),
         TextSignFormat::Ed25519 => Box::new(Ed25519Verifier::try_new(key)?),
+        TextSignFormat::ChaCha20Poly1305 => Box::new(ChaCha20Poly1305Wrapper::try_new(key)?),
     };
     verifier.verify(reader, sig)
 }
@@ -147,6 +217,7 @@ pub fn process_text_key_generate(format: TextSignFormat) -> Result<HashMap<&'sta
     match format {
         TextSignFormat::Blake3 => Blake3::generate(),
         TextSignFormat::Ed25519 => Ed25519Signer::generate(),
+        TextSignFormat::ChaCha20Poly1305 => ChaCha20Poly1305Wrapper::generate(),
     }
 }
 

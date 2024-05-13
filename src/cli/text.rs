@@ -62,6 +62,7 @@ pub struct KeyGenerateOpts {
 pub enum TextSignFormat {
     Blake3,
     Ed25519,
+    ChaCha20Poly1305,
 }
 
 fn parse_text_sign_format(format: &str) -> Result<TextSignFormat, anyhow::Error> {
@@ -75,6 +76,7 @@ impl FromStr for TextSignFormat {
         match s {
             "blake3" => Ok(TextSignFormat::Blake3),
             "ed25519" => Ok(TextSignFormat::Ed25519),
+            "chacha20-poly1305" => Ok(TextSignFormat::ChaCha20Poly1305),
             _ => Err(anyhow::anyhow!("Invalid format"))
         }
     }
@@ -88,6 +90,9 @@ impl From<TextSignFormat> for &str {
             }
             TextSignFormat::Ed25519 => {
                 "ed25519"
+            }
+            TextSignFormat::ChaCha20Poly1305 => {
+                "chacha20-poly1305"
             }
         }
     }
