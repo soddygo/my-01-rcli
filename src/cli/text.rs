@@ -41,6 +41,8 @@ pub struct EncryptOpts {
     pub input: String,
     #[arg(long, value_parser = verify_file,)]
     pub key: String,
+    #[arg(long, value_parser = verify_file,  help = "none file path,unique per message")]
+    pub nonce: String,
     #[arg(long, default_value = "chacha20-poly1305", value_parser = parse_text_chip_format)]
     pub format: TextChipFormat,
 }
@@ -51,6 +53,8 @@ pub struct DecryptOpts {
     pub input: String,
     #[arg(long, value_parser = verify_file,)]
     pub key: String,
+    #[arg(long, value_parser = verify_file,  help = "none file path,unique per message")]
+    pub nonce: String,
     #[arg(long, default_value = "chacha20-poly1305", value_parser = parse_text_chip_format)]
     pub format: TextChipFormat,
 }
