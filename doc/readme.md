@@ -50,10 +50,17 @@ http://127.0.0.1:8080/tower/fixtures/b64.txt
 http://127.0.0.1:8080/fixtures/b64_decode.txt
 
 ```
-
+## 作业
+### 目录展示
 作业,目录展示
 ```shell
 
 http://127.0.0.1:8080/dir/fixtures
 
 ```
+### 加密,解密
+作业,生成key,会在fixture下生成: [ChaCha20Poly1305.txt](..%2Ffixtures%2FChaCha20Poly1305.txt)
+```shell
+cargo run text chip-generate --output-path ./fixtures
+```
+

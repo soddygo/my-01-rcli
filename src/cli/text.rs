@@ -8,7 +8,9 @@ use anyhow::Result;
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use tokio::fs;
-use crate::{CmdExecutor, get_content, get_reader, process_text_key_generate, process_text_sign, process_text_verify};
+use crate::{CmdExecutor, get_content, get_reader, process_text_key_generate, process_text_sign, process_text_verify,
+            process_text_encrypt, process_text_decrypt, process_text_chip_key_generate,
+};
 
 use super::verify_file;
 use super::verify_path;
@@ -22,6 +24,35 @@ pub enum TextSubCommand {
     Verify(TextVerifyOpts),
     #[command(about = "generate a key pair for signing and verifying texts")]
     Generate(KeyGenerateOpts),
+    #[command(about = "generate a key pair for encrypting and decrypting texts")]
+    ChipGenerate(ChipKeyGenerateOpts),
+
+    #[command(about = "encrypt a text with a public/session key")]
+    Encrypt(EncryptOpts),
+
+    #[command(about = "decrypt a text with a private/session key")]
+    Decrypt(DecryptOpts),
+
+}
+
+#[derive(Debug, Parser)]
+pub struct EncryptOpts {
+    #[arg(short, long, value_parser = verify_file, default_value = "-")]
+    pub input: String,
+    #[arg(long, value_parser = verify_file,)]
+    pub key: String,
+    #[arg(long, default_value = "chacha20-poly1305", value_parser = parse_text_chip_format)]
+    pub format: TextChipFormat,
+}
+
+#[derive(Debug, Parser)]
+pub struct DecryptOpts {
+    #[arg(short, long, value_parser = verify_file, default_value = "-")]
+    pub input: String,
+    #[arg(long, value_parser = verify_file,)]
+    pub key: String,
+    #[arg(long, default_value = "chacha20-poly1305", value_parser = parse_text_chip_format)]
+    pub format: TextChipFormat,
 }
 
 #[derive(Debug, Parser)]
@@ -48,6 +79,7 @@ pub struct TextVerifyOpts {
     pub format: TextSignFormat,
 }
 
+
 #[derive(Debug, Parser)]
 pub struct KeyGenerateOpts {
     #[arg(long, default_value = "blake3", value_parser = parse_text_sign_format)]
@@ -58,14 +90,32 @@ pub struct KeyGenerateOpts {
 
 }
 
+#[derive(Debug, Parser)]
+pub struct ChipKeyGenerateOpts {
+    #[arg(long, default_value = "chacha20-poly1305", value_parser = parse_text_chip_format)]
+    pub format: TextChipFormat,
+
+    #[arg(long, value_parser = verify_path)]
+    pub output_path: PathBuf,
+
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum TextChipFormat {
+    ChaCha20Poly1305,
+}
+
 #[derive(Debug, Copy, Clone)]
 pub enum TextSignFormat {
     Blake3,
     Ed25519,
-    ChaCha20Poly1305,
 }
 
 fn parse_text_sign_format(format: &str) -> Result<TextSignFormat, anyhow::Error> {
+    format.parse()
+}
+
+fn parse_text_chip_format(format: &str) -> Result<TextChipFormat, anyhow::Error> {
     format.parse()
 }
 
@@ -76,8 +126,28 @@ impl FromStr for TextSignFormat {
         match s {
             "blake3" => Ok(TextSignFormat::Blake3),
             "ed25519" => Ok(TextSignFormat::Ed25519),
-            "chacha20-poly1305" => Ok(TextSignFormat::ChaCha20Poly1305),
             _ => Err(anyhow::anyhow!("Invalid format"))
+        }
+    }
+}
+
+impl FromStr for TextChipFormat {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "chacha20-poly1305" => Ok(TextChipFormat::ChaCha20Poly1305),
+            _ => Err(anyhow::anyhow!("Invalid format"))
+        }
+    }
+}
+
+impl From<TextChipFormat> for &str {
+    fn from(format: TextChipFormat) -> Self {
+        match format {
+            TextChipFormat::ChaCha20Poly1305 => {
+                "chacha20-poly1305"
+            }
         }
     }
 }
@@ -91,9 +161,6 @@ impl From<TextSignFormat> for &str {
             TextSignFormat::Ed25519 => {
                 "ed25519"
             }
-            TextSignFormat::ChaCha20Poly1305 => {
-                "chacha20-poly1305"
-            }
         }
     }
 }
@@ -104,6 +171,11 @@ impl Display for TextSignFormat {
     }
 }
 
+impl Display for TextChipFormat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", Into::<&str>::into(*self))
+    }
+}
 
 impl CmdExecutor for TextSignOpts {
     async fn execute(self) -> Result<()> {
@@ -135,6 +207,52 @@ impl CmdExecutor for TextVerifyOpts {
 impl CmdExecutor for KeyGenerateOpts {
     async fn execute(self) -> Result<()> {
         let key = process_text_key_generate(self.format)?;
+        for (k, v) in key {
+            fs::write(self.output_path.join(k), v).await?;
+        }
+        Ok(())
+    }
+}
+
+impl CmdExecutor for EncryptOpts {
+    async fn execute(self) -> Result<()> {
+        let mut reader = get_reader(&self.input)?;
+
+        let key = get_content(&self.key)?;
+        let content = process_text_encrypt(&mut reader, &key, self.format)?;
+        //转base64 打印
+        let base64 = crate::process_encode(&mut content.as_slice(), crate::cli::Base64Format::Standard)?;
+
+
+        println!("{}", base64);
+
+        Ok(())
+    }
+}
+
+impl CmdExecutor for DecryptOpts {
+    async fn execute(self) -> Result<()> {
+        let mut base64_reader = get_reader(&self.input)?;
+        //base64解码
+        let mut reader_venc = crate::process_decode(&mut base64_reader, crate::cli::Base64Format::Standard)?;
+
+
+        let key = get_content(&self.key)?;
+
+        let content = process_text_decrypt(reader_venc, &key, self.format)?;
+
+        //转utf8字符串
+
+        let ret = String::from_utf8(content).unwrap();
+        println!("{}", ret);
+
+        Ok(())
+    }
+}
+
+impl CmdExecutor for ChipKeyGenerateOpts {
+    async fn execute(self) -> Result<()> {
+        let key = process_text_chip_key_generate(self.format)?;
         for (k, v) in key {
             fs::write(self.output_path.join(k), v).await?;
         }

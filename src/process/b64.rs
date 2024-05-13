@@ -15,7 +15,7 @@ pub fn process_encode(reader: &mut dyn Read, format: Base64Format) -> Result<Str
 }
 
 
-pub fn process_decode(reader: &mut dyn Read, format: Base64Format) -> Result<String> {
+pub fn process_decode(reader: &mut dyn Read, format: Base64Format) -> Result<Vec<u8>> {
     let mut buf = Vec::new();
     reader.read_to_end(&mut buf)?;
     let decoded = match format {
@@ -24,7 +24,7 @@ pub fn process_decode(reader: &mut dyn Read, format: Base64Format) -> Result<Str
     };
     // TODO: decoded data might not be string (but for this example, we assume it is)
 
-    Ok(String::from_utf8(decoded)?)
+    Ok(decoded)
 }
 
 
@@ -50,8 +50,9 @@ mod tests {
         let input = "./fixtures/b64_decode.txt";
         let mut reader = get_reader(input)?;
         let format = Base64Format::Standard;
-        let output = process_decode(&mut reader, format)?;
+        let ret = process_decode(&mut reader, format)?;
 
+        let output = String::from_utf8(ret)?;
         print!("{}", output);
 
         Ok(())

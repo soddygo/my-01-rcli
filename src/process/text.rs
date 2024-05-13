@@ -4,7 +4,7 @@ use std::io::{Error, ErrorKind, Read};
 use anyhow::{anyhow, Result};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use chacha20poly1305::{aead::{AeadCore, AeadInPlace, KeyInit, OsRng}, ChaCha20Poly1305, ChaChaPoly1305, Key, Nonce};
-use crate::{process_genpass, TextSignFormat};
+use crate::{process_genpass, TextChipFormat, TextSignFormat};
 
 pub trait TextSigner {
     fn sign(&self, reader: &mut dyn Read) -> Result<Vec<u8>>;
@@ -50,39 +50,6 @@ impl TextVerifier for Blake3 {
     }
 }
 
-
-impl TextSigner for ChaCha20Poly1305Wrapper {
-    fn sign(&self, reader: &mut dyn Read) -> Result<Vec<u8>> {
-        let mut buf = Vec::new();
-        reader.read_to_end(&mut buf)?;
-        let cipher = ChaCha20Poly1305::new(&self.key);
-        let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng); // 96-bits; unique per message
-
-        let encrypt = cipher.encrypt_in_place(&nonce, b"", &mut buf);
-
-        if encrypt.is_ok() {
-            Ok(buf)
-        } else {
-            Err(anyhow!("encrypt failed"))
-        }
-    }
-}
-
-impl TextVerifier for ChaCha20Poly1305Wrapper {
-    fn verify(&self, reader: &mut dyn Read, sig: &[u8]) -> Result<bool> {
-        let mut buf = Vec::new();
-        reader.read_to_end(&mut buf)?;
-        let cipher = ChaCha20Poly1305::new(&self.key);
-        let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng); // 96-bits; unique per message
-
-        let decrypt = cipher.decrypt_in_place(&nonce, b"", &mut buf);
-        if decrypt.is_ok() {
-            Ok(true)
-        } else {
-            Err(anyhow!("decrypt failed"))
-        }
-    }
-}
 
 impl TextSigner for Ed25519Signer {
     fn sign(&self, reader: &mut dyn Read) -> Result<Vec<u8>> {
@@ -135,9 +102,9 @@ impl ChaCha20Poly1305Wrapper {
 
         // Create a new ChaCha20Poly1305 instance with the provided key
 
-        let chaChaKey = Key::clone_from_slice(key);
+        let cha_cha_key = Key::clone_from_slice(key);
 
-        Ok(Self::new(chaChaKey))
+        Ok(Self::new(cha_cha_key))
     }
 
     pub fn new(key: Key) -> Self {
@@ -186,6 +153,58 @@ impl Ed25519Verifier {
     }
 }
 
+pub fn process_text_encrypt<U: Read + Sized>(reader: &mut U,
+                                             key: impl AsRef<[u8]>, // (ptr, length)
+                                             format: TextChipFormat, ) -> Result<Vec<u8>> {
+    match format {
+        TextChipFormat::ChaCha20Poly1305 => {
+            let mut buf = Vec::new();
+            reader.read_to_end(&mut buf)?;
+            let cha_cha_wrapper = ChaCha20Poly1305Wrapper::try_new(key)?;
+            let cipher = ChaCha20Poly1305::new(&cha_cha_wrapper.key);
+
+            let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng); // 96-bits; unique per message
+            let encrypt = cipher.encrypt_in_place(&nonce, b"", &mut buf);
+            Ok(buf)
+        }
+        _ => {
+            Err(anyhow!("not support"))
+        }
+    }
+}
+
+
+pub fn process_text_decrypt(mut buf: Vec<u8>,
+                            key: impl AsRef<[u8]>, // (ptr, length)
+                            format: TextChipFormat, ) -> Result<Vec<u8>> {
+    match format {
+        TextChipFormat::ChaCha20Poly1305 => {
+            let cha_cha_wrapper = ChaCha20Poly1305Wrapper::try_new(key)?;
+            let cipher = ChaCha20Poly1305::new(&cha_cha_wrapper.key);
+
+            let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng); // 96-bits; unique per message
+
+            let decrypt = cipher.decrypt_in_place(&nonce, b"", &mut buf);
+
+            if decrypt.is_ok() {
+                Ok(buf)
+            } else {
+                Err(anyhow!("decrypt failed,{}",decrypt.expect_err("failed")))
+            }
+        }
+        _ => {
+            Err(anyhow!("not support"))
+        }
+    }
+}
+
+pub fn process_text_chip_key_generate(format: TextChipFormat) -> Result<HashMap<&'static str, Vec<u8>>> {
+    match format {
+        TextChipFormat::ChaCha20Poly1305 => ChaCha20Poly1305Wrapper::generate(),
+    }
+}
+
+
 pub fn process_text_sign(
     reader: &mut dyn Read,
     key: &[u8], // (ptr, length)
@@ -208,7 +227,6 @@ pub fn process_text_verify(
     let verifier: Box<dyn TextVerifier> = match format {
         TextSignFormat::Blake3 => Box::new(Blake3::try_new(key)?),
         TextSignFormat::Ed25519 => Box::new(Ed25519Verifier::try_new(key)?),
-        TextSignFormat::ChaCha20Poly1305 => Box::new(ChaCha20Poly1305Wrapper::try_new(key)?),
     };
     verifier.verify(reader, sig)
 }
@@ -217,7 +235,6 @@ pub fn process_text_key_generate(format: TextSignFormat) -> Result<HashMap<&'sta
     match format {
         TextSignFormat::Blake3 => Blake3::generate(),
         TextSignFormat::Ed25519 => Ed25519Signer::generate(),
-        TextSignFormat::ChaCha20Poly1305 => ChaCha20Poly1305Wrapper::generate(),
     }
 }
 
@@ -225,6 +242,10 @@ pub fn process_text_key_generate(format: TextSignFormat) -> Result<HashMap<&'sta
 mod tests {
     use super::*;
     use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+    use base64::engine::general_purpose::STANDARD;
+    use serde_json::Value::String;
+    use tokio::io::AsyncReadExt;
+    use crate::get_reader;
 
     const KEY: &[u8] = include_bytes!("../../fixtures/blake3.txt");
 
@@ -247,6 +268,100 @@ mod tests {
         let sig = URL_SAFE_NO_PAD.decode(sig)?;
         let ret = process_text_verify(&mut reader, KEY, &sig, format)?;
         assert!(ret);
+        Ok(())
+    }
+
+
+    #[test]
+    fn test_process_text_encrypt() -> Result<()> {
+        let format = TextChipFormat::ChaCha20Poly1305;
+        let file_key_content = crate::get_content("./fixtures/ChaCha20Poly1305.txt")?;
+
+
+        let cha_cha_wrapper = ChaCha20Poly1305Wrapper::try_new(file_key_content.clone())?;
+        let cipher = ChaCha20Poly1305::new(&cha_cha_wrapper.key);
+
+        let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng); // 96-bits; unique per message
+
+        // let mut reader = "plaintext message".to_string();
+        let mut buffer: Vec<u8> = Vec::new(); // Note: buffer needs 16-bytes overhead for auth tag
+        buffer.extend_from_slice(b"plaintext message");
+        let mut buftest = process_text_readtest(&mut buffer.as_slice());
+
+        // let encrypt = cipher.encrypt_in_place(&nonce, b"", &mut buftest);
+        let mut ret = process_text_encrypt(&mut buftest.as_slice(), &file_key_content, format)?;
+
+        let decrypt = cipher.decrypt_in_place(&nonce, b"", &mut ret);
+
+
+        //转base64 打印
+        let content = std::string::String::from_utf8(ret).unwrap();
+
+        println!("content={}", content);
+
+
+        Ok(())
+    }
+
+    pub fn process_text_readtest(reader: &mut impl Read) -> Vec<u8> {
+        let mut buf = Vec::new();
+        reader.read_to_end(&mut buf);
+
+        buf
+    }
+
+
+    #[test]
+    fn test_process_chacha20() -> Result<()> {
+        let file_key_content = crate::get_content("./fixtures/ChaCha20Poly1305.txt")?;
+
+
+        let cha_cha_wrapper = ChaCha20Poly1305Wrapper::try_new(file_key_content)?;
+        let cipher = ChaCha20Poly1305::new(&cha_cha_wrapper.key);
+
+        let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng); // 96-bits; unique per message
+
+
+        let mut buffer: Vec<u8> = Vec::new(); // Note: buffer needs 16-bytes overhead for auth tag
+        buffer.extend_from_slice(b"plaintext message");
+
+// Encrypt `buffer` in-place, replacing the plaintext contents with ciphertext
+        cipher.encrypt_in_place(&nonce, b"", &mut buffer);
+        println!("ret={}", buffer.len());
+        let base64_reader = crate::process_encode(&mut buffer.as_slice(), crate::cli::Base64Format::Standard)?;
+        println!("base64_reader={}", base64_reader);
+
+// `buffer` now contains the message ciphertext
+        assert_ne!(&buffer, b"plaintext message");
+
+        let mut base64_reader_decocde = crate::process_decode(&mut base64_reader.as_bytes(), crate::cli::Base64Format::Standard)?;
+
+
+// Decrypt `buffer` in-place, replacing its ciphertext context with the original plaintext
+        cipher.decrypt_in_place(&nonce, b"", &mut base64_reader_decocde);
+
+        let out = std::string::String::from_utf8(base64_reader_decocde.clone())?;
+        println!("out={}", out);
+        assert_eq!(&base64_reader_decocde, b"plaintext message");
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_process_text_decrypt() -> Result<()> {
+        let mut base64_reader = "ESKg0QDwuKGYWbXOT31O47YK6a78Ga157c0xPvlQZf6Y".to_string();
+        //base64解码
+        let mut reader_vec = crate::process_decode(&mut base64_reader.as_bytes(), crate::cli::Base64Format::Standard)?;
+
+        let format = TextChipFormat::ChaCha20Poly1305;
+        let file_key_content = crate::get_content("./fixtures/ChaCha20Poly1305.txt")?;
+
+        let ret = process_text_decrypt(reader_vec, &file_key_content, format)?;
+        //转base64 打印
+        let content = std::string::String::from_utf8(ret).unwrap();
+
+        println!("{}", content);
+
         Ok(())
     }
 }

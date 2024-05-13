@@ -90,7 +90,8 @@ impl CmdExecutor for Base64DecodeOpts {
         let mut reader = crate::get_reader(&self.input)?;
         let ret = crate::process_decode(&mut reader, self.format)?;
 
-        println!("{}", ret);
+        let output = String::from_utf8(ret)?;
+        println!("{}", output);
         Ok(())
     }
 }
