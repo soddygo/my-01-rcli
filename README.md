@@ -40,14 +40,15 @@ cargo run text decrypt --key ./fixtures/ChaCha20Poly1305.txt --nonce-input-path 
 {"data":"hello world","exp":1715677104}
 ```
 
-加密
+
+加密,参数 --exp  暂时只支持天单位,比如:1d
 ```shell
-cargo run jwt encode --data "hello world"  --secret ./fixtures/jwt_secret.txt
+cargo run jwt encode --data "hello world"  --secret ./fixtures/jwt_secret.txt --exp 1d
 ```
 
 解密,其中data 值是前面加密打印的值
 ```shell
-cargo run jwt decode --data eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJkYXRhIjoiaGVsbG8gd29ybGQiLCJleHAiOjE3MTU2NzcxMDR9.8g6KRBSNNV2cmFmUusfizdpDarHsu0MmihNfW-08bo0  --secret ./fixtures/jwt_secret.txt
+cargo run jwt decode --data eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJkYXRhIjoiaGVsbG8gd29ybGQiLCJleHAiOjE3MTU2Nzg0MjV9.j9mcf65yIGwkqtTreIr_Km3f-_xB7VWmJdT7yH4YL8s  --secret ./fixtures/jwt_secret.txt
 ```
 
 

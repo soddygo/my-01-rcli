@@ -16,6 +16,8 @@ pub trait JwtDecoder {
 pub struct JwtEncoderWrapper {
     key: EncodingKey,
     header: Header,
+    //过期时间,utc
+    exp: u64,
 
 }
 
@@ -30,25 +32,20 @@ pub struct JwtDecoderWrapper {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JwtPlayerData {
     data: String,
-    exp: i64,
+    exp: u64,
 }
 
 impl JwtPlayerData {
-    fn new(data: String) -> Self {
+    fn new(data: String, exp: u64) -> Self {
         Self {
             data,
-            exp: (SystemTime::now()
-                .checked_add(Duration::from_secs(3600)) // 过期时间为1小时
-                .unwrap()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs()) as i64,
+            exp,
         }
     }
 }
 
 impl JwtEncoderWrapper {
-    pub fn try_new(key: String, algorithm: crate::cli::AlgorithmFormat) -> Result<Self> {
+    pub fn try_new(key: String, algorithm: crate::cli::AlgorithmFormat, exp: u64) -> Result<Self> {
         let header = match algorithm {
             crate::cli::AlgorithmFormat::HS256 => {
                 let header = Header::new(jsonwebtoken::Algorithm::HS256);
@@ -58,13 +55,14 @@ impl JwtEncoderWrapper {
 
         let key = EncodingKey::from_secret(key.as_bytes());
 
-        Ok(JwtEncoderWrapper::new(key, header))
+        Ok(JwtEncoderWrapper::new(key, header, exp))
     }
 
-    pub fn new(key: EncodingKey, header: Header) -> Self {
+    pub fn new(key: EncodingKey, header: Header, exp: u64) -> Self {
         JwtEncoderWrapper {
             key,
             header,
+            exp,
         }
     }
 }
@@ -95,12 +93,11 @@ impl JwtDecoderWrapper {
 
 impl JwtEncoder for JwtEncoderWrapper {
     fn encode(&self, data: String) -> Result<String> {
-        let jwt_player_data = JwtPlayerData::new(data);
+        let jwt_player_data = JwtPlayerData::new(data, self.exp);
         let token = encode(&self.header, &jwt_player_data, &self.key);
 
         match token {
             Ok(message) => {
-                let message = message;
                 Ok(message)
             }
             Err(err) => {
@@ -131,6 +128,7 @@ impl JwtDecoder for JwtDecoderWrapper {
 
 #[cfg(test)]
 mod tests {
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
     use jsonwebtoken::{Algorithm, decode, DecodingKey, encode, EncodingKey, Header, Validation};
     use anyhow::Result;
     use crate::JwtPlayerData;
@@ -143,7 +141,15 @@ mod tests {
 
         let header = Header::new(algorithm);
 
-        let jwt_player_data = JwtPlayerData::new("hello world".to_string());
+
+        let exp = (SystemTime::now()
+            .checked_add(Duration::from_days(1))
+            .unwrap()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs());
+
+        let jwt_player_data = JwtPlayerData::new("hello world".to_string(), exp);
 
         let token = encode(&header, &jwt_player_data, &EncodingKey::from_secret(secret.as_ref()))?;
 
