@@ -3,13 +3,14 @@ mod base64;
 mod text;
 mod genpass;
 mod http;
+mod jwt;
 
 use std::path::{Path, PathBuf};
 use clap::{Parser};
 use enum_dispatch::enum_dispatch;
 
 
-pub use self::{csv::*, base64::*,text::*,genpass::*,http::*};
+pub use self::{csv::*, base64::*, text::*, genpass::*, http::*, jwt::*};
 
 #[derive(Debug, Parser)]
 #[command(name = "my-rcli", author, version, about, long_about = None)]
@@ -29,12 +30,15 @@ pub enum Subcommand {
 
     #[command(subcommand, name = "text", about = "Text manipulation commands")]
     Text(TextSubCommand),
-    
-    #[command(name = "genpass",about="")]
+
+    #[command(name = "genpass", about = "")]
     GenPass(GenPassOpts),
 
     #[command(subcommand, name = "http", about = "HTTP server")]
     Http(HttpSubCommand),
+
+    #[command(subcommand, name = "jwt", about = "JWT convert")]
+    Jwt(JwtSubCommand),
 }
 
 fn verify_file(filename: &str) -> Result<String, &'static str> {

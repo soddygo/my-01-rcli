@@ -58,7 +58,7 @@ http://127.0.0.1:8080/fixtures/b64_decode.txt
 http://127.0.0.1:8080/dir/fixtures
 
 ```
-### 加密,解密
+### chacha20 加密,解密
 作业,生成key,会在fixture下生成: [ChaCha20Poly1305.txt](..%2Ffixtures%2FChaCha20Poly1305.txt)
 ```shell
 cargo run text chip-generate --output-path ./fixtures
@@ -72,4 +72,17 @@ cargo run text encrypt --key ./fixtures/ChaCha20Poly1305.txt --nonce-output-path
 解密测试,控制台会输出解密后的base64字符,./fixtures/nonce.txt是上次加密的nonce
 ```shell
 cargo run text decrypt --key ./fixtures/ChaCha20Poly1305.txt --nonce-input-path ./fixtures/nonce.txt
+```
+
+
+### jwt 加密解密
+
+加密
+```shell
+cargo run jwt encode --data "hello world"  --secret ./fixtures/jwt_secret.txt
+```
+
+解密
+```shell
+
 ```
