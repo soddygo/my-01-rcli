@@ -77,12 +77,17 @@ cargo run text decrypt --key ./fixtures/ChaCha20Poly1305.txt --nonce-input-path 
 
 ### jwt 加密解密
 
+数据结构定义,输入的内容,自动放到data字段,exp是unix时间戳,标识过期时间
+```text
+{"data":"hello world","exp":1715677104}
+```
+
 加密
 ```shell
 cargo run jwt encode --data "hello world"  --secret ./fixtures/jwt_secret.txt
 ```
 
-解密
+解密,其中data 值是前面加密打印的值
 ```shell
-
+cargo run jwt decode --data eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJkYXRhIjoiaGVsbG8gd29ybGQiLCJleHAiOjE3MTU2NzcxMDR9.8g6KRBSNNV2cmFmUusfizdpDarHsu0MmihNfW-08bo0  --secret ./fixtures/jwt_secret.txt
 ```

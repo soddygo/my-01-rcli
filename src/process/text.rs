@@ -216,9 +216,6 @@ pub fn process_text_decrypt(mut buf: Vec<u8>,
                 Err(anyhow!("decrypt failed,{}",decrypt.expect_err("failed")))
             }
         }
-        _ => {
-            Err(anyhow!("not support"))
-        }
     }
 }
 

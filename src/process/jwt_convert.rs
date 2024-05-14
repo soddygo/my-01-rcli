@@ -1,10 +1,11 @@
 use std::io::Read;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use jsonwebtoken::{decode, DecodingKey, encode, EncodingKey, Header, Validation};
 use anyhow::Result;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 pub trait JwtEncoder {
-    fn encode<U: Serialize>(&self, data: &U) -> Result<String>;
+    fn encode(&self, data: String) -> Result<String>;
 }
 
 pub trait JwtDecoder {
@@ -25,6 +26,26 @@ pub struct JwtDecoderWrapper {
 
 }
 
+///jwt 测试数据结果对象
+#[derive(Debug, Serialize, Deserialize)]
+pub struct JwtPlayerData {
+    data: String,
+    exp: i64,
+}
+
+impl JwtPlayerData {
+    fn new(data: String) -> Self {
+        Self {
+            data,
+            exp: (SystemTime::now()
+                .checked_add(Duration::from_secs(3600)) // 过期时间为1小时
+                .unwrap()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs()) as i64,
+        }
+    }
+}
 
 impl JwtEncoderWrapper {
     pub fn try_new(key: String, algorithm: crate::cli::AlgorithmFormat) -> Result<Self> {
@@ -73,8 +94,9 @@ impl JwtDecoderWrapper {
 
 
 impl JwtEncoder for JwtEncoderWrapper {
-    fn encode<U: Serialize>(&self, data: &U) -> Result<String> {
-        let token = encode(&self.header, data, &self.key);
+    fn encode(&self, data: String) -> Result<String> {
+        let jwt_player_data = JwtPlayerData::new(data);
+        let token = encode(&self.header, &jwt_player_data, &self.key);
 
         match token {
             Ok(message) => {
@@ -93,10 +115,10 @@ impl JwtDecoder for JwtDecoderWrapper {
         let mut buffer = Vec::new();
         data.read_to_end(&mut buffer);
         let token = String::from_utf8(buffer)?;
-        let token_message = decode::<String>(&token, &self.key, &self.validation);
+        let token_message = decode::<JwtPlayerData>(&token, &self.key, &self.validation);
         match token_message {
             Ok(message) => {
-                let message = message.claims;
+                let message = serde_json::to_string(&message.claims)?;
                 Ok(message)
             }
             Err(err) => {
@@ -111,6 +133,7 @@ impl JwtDecoder for JwtDecoderWrapper {
 mod tests {
     use jsonwebtoken::{Algorithm, decode, DecodingKey, encode, EncodingKey, Header, Validation};
     use anyhow::Result;
+    use crate::JwtPlayerData;
 
     #[test]
     fn test_jwt() -> Result<()> {
@@ -120,13 +143,25 @@ mod tests {
 
         let header = Header::new(algorithm);
 
-        let token = encode(&header, &"hello world".to_string(), &EncodingKey::from_secret(secret.as_ref())).unwrap();
+        let jwt_player_data = JwtPlayerData::new("hello world".to_string());
+
+        let token = encode(&header, &jwt_player_data, &EncodingKey::from_secret(secret.as_ref()))?;
 
         println!("加密={}", token);
-        let token_message = decode::<String>(&token, &DecodingKey::from_secret(secret.as_ref()), &Validation::new(algorithm));
+        let token_message = decode::<JwtPlayerData>(&token,
+                                                    &DecodingKey::from_secret(secret.as_ref()),
+                                                    &Validation::new(algorithm));
 
+        match token_message {
+            Ok(message) => {
+                let json = serde_json::to_string(&message.claims)?;
+                println!("解码={:?}", json);
+            }
+            Err(err) => {
+                return Err(anyhow::anyhow!("decode error,err={}",err));
+            }
+        }
 
-        println!("解码={}", token_message.unwrap().claims);
 
         Ok(())
     }

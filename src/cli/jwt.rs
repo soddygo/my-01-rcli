@@ -3,7 +3,7 @@ use std::str::FromStr;
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use enum_dispatch::enum_dispatch;
-use crate::{CmdExecutor, JwtDecoder, JwtDecoderWrapper, JwtEncoder, JwtEncoderWrapper};
+use crate::{CmdExecutor, JwtDecoder, JwtDecoderWrapper, JwtEncoder, JwtEncoderWrapper, JwtPlayerData};
 use super::verify_file;
 
 #[derive(Debug, Parser)]
@@ -79,7 +79,7 @@ impl CmdExecutor for JwtEncodeOpts {
     async fn execute(self) -> anyhow::Result<()> {
         let jwt_encoder_wrapper = JwtEncoderWrapper::try_new(self.secret, self.algorithm)?;
 
-        let ret = jwt_encoder_wrapper.encode(&self.data)?;
+        let ret = jwt_encoder_wrapper.encode(self.data.clone())?;
         println!("{}", ret);
 
         Ok(())
