@@ -87,7 +87,6 @@ cargo run text decrypt --key ./fixtures/ChaCha20Poly1305.txt --nonce-input-path 
 cargo run jwt encode --data "hello world"  --secret ./fixtures/jwt_secret.txt --exp 1d
 ```
 
-
 解密,其中data 值是前面加密打印的值
 ```shell
 cargo run jwt decode --data eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJkYXRhIjoiaGVsbG8gd29ybGQiLCJleHAiOjE3MTU2Nzg0MjV9.j9mcf65yIGwkqtTreIr_Km3f-_xB7VWmJdT7yH4YL8s  --secret ./fixtures/jwt_secret.txt
