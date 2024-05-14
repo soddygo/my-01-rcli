@@ -151,7 +151,7 @@ mod tests {
 
         let jwt_player_data = JwtPlayerData::new("hello world".to_string(), exp);
 
-        let token = encode(&header, &jwt_player_data, &EncodingKey::from_secret(secret.as_ref()))?;
+        let token = encode(&header, &jwt_player_data, &EncodingKey::from_secret(secret.as_bytes()))?;
 
         println!("加密={}", token);
         let token_message = decode::<JwtPlayerData>(&token,
