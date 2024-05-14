@@ -1,5 +1,63 @@
 # Geektime Rust 语言训练营
 
+## 作业
+
+### 目录展示
+
+server start
+```shell
+ cargo run http server  
+
+```
+
+作业,目录展示
+```url
+
+http://127.0.0.1:8080/dir/fixtures
+
+```
+### chacha20 加密,解密
+作业,生成key,会在fixture下生成: [ChaCha20Poly1305.txt](..%2Ffixtures%2FChaCha20Poly1305.txt)
+```shell
+cargo run text chip-generate --output-path ./fixtures
+```
+
+加密测试,控制台会输出加密后的base64字符,./fixtures/nonce.txt是nonce
+```shell
+cargo run text encrypt --key ./fixtures/ChaCha20Poly1305.txt --nonce-output-path ./fixtures  --input ./fixtures/chacha20input.text
+```
+
+解密测试,控制台会输出解密后的base64字符,./fixtures/nonce.txt是上次加密的nonce
+```shell
+cargo run text decrypt --key ./fixtures/ChaCha20Poly1305.txt --nonce-input-path ./fixtures/nonce.txt
+```
+
+
+### jwt 加密解密
+
+数据结构定义,输入的内容,自动放到data字段,exp是unix时间戳,标识过期时间
+```text
+{"data":"hello world","exp":1715677104}
+```
+
+
+加密,参数 --exp  暂时只支持天单位,比如:1d
+```shell
+cargo run jwt encode --data "hello world"  --secret ./fixtures/jwt_secret.txt --exp 1d
+```
+
+解密,其中data 值是前面加密打印的值
+```shell
+cargo run jwt decode --data eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJkYXRhIjoiaGVsbG8gd29ybGQiLCJleHAiOjE3MTU2Nzg0MjV9.j9mcf65yIGwkqtTreIr_Km3f-_xB7VWmJdT7yH4YL8s  --secret ./fixtures/jwt_secret.txt
+```
+
+验证jwt
+```shell
+cargo run jwt verify --data eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJkYXRhIjoiaGVsbG8gd29ybGQiLCJleHAiOjE3MTU3NjMwMjh9.YE-4ZBDj5QnvxwCC7F2i_UkbWvHcMYxSoQ1-Hs3u0is --secret ./fixtures/jwt_secret.txt
+```
+
+![img.png](img.png)
+
 ## 环境设置
 
 ### 安装 Rust
