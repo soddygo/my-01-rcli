@@ -12,6 +12,10 @@ pub trait JwtDecoder {
     fn decode<U: Read>(&self, data: &mut U) -> Result<String>;
 }
 
+pub trait JwtVerify {
+    fn verify<U: Read>(&self, data: &mut U) -> Result<bool>;
+}
+
 
 pub struct JwtEncoderWrapper {
     key: EncodingKey,
@@ -27,6 +31,7 @@ pub struct JwtDecoderWrapper {
     validation: Validation,
 
 }
+
 
 ///jwt 测试数据结果对象
 #[derive(Debug, Serialize, Deserialize)]
@@ -125,6 +130,17 @@ impl JwtDecoder for JwtDecoderWrapper {
     }
 }
 
+
+impl JwtVerify for JwtDecoderWrapper {
+    fn verify<U: Read>(&self, data: &mut U) -> Result<bool> {
+        let result = self.decode(data);
+        return if result.is_ok() {
+            Ok(true)
+        } else {
+            Ok(false)
+        };
+    }
+}
 
 #[cfg(test)]
 mod tests {

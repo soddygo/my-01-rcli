@@ -4,7 +4,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use enum_dispatch::enum_dispatch;
-use crate::{CmdExecutor, JwtDecoder, JwtDecoderWrapper, JwtEncoder, JwtEncoderWrapper, JwtPlayerData};
+use crate::{CmdExecutor, JwtDecoder, JwtDecoderWrapper, JwtEncoder, JwtEncoderWrapper, JwtPlayerData, JwtVerify};
 use super::verify_file;
 
 #[derive(Debug, Parser)]
@@ -15,8 +15,23 @@ pub enum JwtSubCommand {
     #[command(name = "decode", about = "decode jwt")]
     Decode(JwtDecodeOpts),
 
+    #[command(name = "verify", about = "verify jwt")]
+    Verify(VerifyOpts),
+
 }
 
+#[derive(Debug, Parser)]
+pub struct VerifyOpts {
+    #[arg(long)]
+    pub data: String,
+    #[arg(long, value_parser = verify_file)]
+    pub secret: String,
+    #[arg(
+        long, default_value = "HS256", value_parser = parse_algorithm_format, value_name = "默认HS256,暂时只支持这1种"
+    )]
+    pub algorithm: AlgorithmFormat,
+
+}
 
 #[derive(Debug, Parser)]
 pub struct JwtEncodeOpts {
@@ -117,5 +132,17 @@ impl CmdExecutor for JwtDecodeOpts {
         println!("{}", ret);
 
         Ok(())
+    }
+}
+
+impl CmdExecutor for VerifyOpts{
+    async fn execute(self) -> Result<()> {
+        let jwt_decoder_wrapper = JwtDecoderWrapper::try_new(self.secret, self.algorithm)?;
+
+        let ret = jwt_decoder_wrapper.verify(&mut self.data.as_bytes())?;
+        println!("{}", ret);
+
+        Ok(())
+        
     }
 }

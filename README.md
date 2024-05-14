@@ -51,6 +51,10 @@ cargo run jwt encode --data "hello world"  --secret ./fixtures/jwt_secret.txt --
 cargo run jwt decode --data eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJkYXRhIjoiaGVsbG8gd29ybGQiLCJleHAiOjE3MTU2Nzg0MjV9.j9mcf65yIGwkqtTreIr_Km3f-_xB7VWmJdT7yH4YL8s  --secret ./fixtures/jwt_secret.txt
 ```
 
+验证jwt
+```shell
+cargo run jwt verify --data eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJkYXRhIjoiaGVsbG8gd29ybGQiLCJleHAiOjE3MTU3NjMwMjh9.YE-4ZBDj5QnvxwCC7F2i_UkbWvHcMYxSoQ1-Hs3u0is --secret ./fixtures/jwt_secret.txt
+```
 
 ## 环境设置
 
