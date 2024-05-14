@@ -1,21 +1,14 @@
-use std::convert::Infallible;
-use std::io::Bytes;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Duration;
-
 use anyhow::Result;
 use axum::extract::{Path, State};
-use axum::http::{HeaderName, Request, Response, StatusCode};
+use axum::http::StatusCode;
 use axum::response::Html;
 use axum::Router;
 use axum::routing::get;
-use tower::{Service, ServiceBuilder, ServiceExt};
-use tower_http::body::Full;
-use tower_http::ServiceBuilderExt;
-use tracing::{info, warn};
 use tower_http::services::ServeDir;
+use tracing::{info, warn};
 
 #[derive(Debug)]
 struct HttpServeState {
@@ -35,7 +28,7 @@ pub async fn process_http_server(path: PathBuf, port: u16) -> Result<()> {
     //     // Methods from tower-http
     //     .trace_for_http()
     //     .propagate_header(HeaderName::from_static("x-request-id"))
-    //     .service_fn(handle); 
+    //     .service_fn(handle);
 
     let router = Router::new()
         .nest_service("/tower", ServeDir::new(path))
@@ -46,7 +39,7 @@ pub async fn process_http_server(path: PathBuf, port: u16) -> Result<()> {
     // // 将服务和路由器组合在一起
     // let app = router.into_service() // 转换为服务
     //     .and_then(move |req, res| service.call(req).map(move |res| (res, res)));
-    // 
+    //
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, router).await?;
     Ok(())
@@ -125,6 +118,7 @@ async fn file_handler(
 #[cfg(test)]
 mod tests {
     use axum::extract::State;
+
     use super::*;
 
     #[tokio::test]

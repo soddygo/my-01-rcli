@@ -1,10 +1,13 @@
 use std::fmt::Display;
 use std::str::FromStr;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use anyhow::{anyhow, Result};
+
+use anyhow::Result;
 use clap::Parser;
 use enum_dispatch::enum_dispatch;
-use crate::{CmdExecutor, JwtDecoder, JwtDecoderWrapper, JwtEncoder, JwtEncoderWrapper, JwtPlayerData, JwtVerify};
+
+use crate::{CmdExecutor, JwtDecoder, JwtDecoderWrapper, JwtEncoder, JwtEncoderWrapper, JwtVerify};
+
 use super::verify_file;
 
 #[derive(Debug, Parser)]
@@ -76,12 +79,12 @@ fn parse_exp_time(exp_time: &str) -> Result<u64> {
     let exp_day = exp_time_d.parse::<u64>().unwrap();
 
 
-    let unix_time = (SystemTime::now()
+    let unix_time = SystemTime::now()
         .checked_add(Duration::from_days(exp_day))
         .unwrap()
         .duration_since(UNIX_EPOCH)
         .unwrap()
-        .as_secs());
+        .as_secs();
 
     Ok(unix_time)
 }
@@ -143,6 +146,6 @@ impl CmdExecutor for VerifyOpts{
         println!("{}", ret);
 
         Ok(())
-        
+
     }
 }

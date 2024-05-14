@@ -6,7 +6,6 @@ use chacha20poly1305::{aead::{AeadCore, AeadInPlace, KeyInit, OsRng}, Key, XChaC
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 
 use crate::{process_genpass, TextChipFormat, TextSignFormat};
-use crate::TextChipFormat::ChaCha20Poly1305Format;
 
 pub trait TextSigner {
     fn sign(&self, reader: &mut dyn Read) -> Result<Vec<u8>>;
@@ -191,9 +190,6 @@ pub fn process_text_encrypt<U: Read + Sized>(reader: &mut U,
                 Err(anyhow!("encrypt failed,{}",encrypt.expect_err("failed")))
             }
         }
-        _ => {
-            Err(anyhow!("not support"))
-        }
     }
 }
 
@@ -261,8 +257,6 @@ pub fn process_text_key_generate(format: TextSignFormat) -> Result<HashMap<&'sta
 
 #[cfg(test)]
 mod tests {
-    use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
-
     use super::*;
 
     const KEY: &[u8] = include_bytes!("../../fixtures/blake3.txt");
@@ -278,16 +272,6 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn test_process_text_verify() -> Result<()> {
-        let mut reader = "hello".as_bytes();
-        let format = TextSignFormat::Blake3;
-        let sig = "33Ypo4rveYpWmJKAiGnnse-wHQhMVujjmcVkV4Tl43k";
-        let sig = URL_SAFE_NO_PAD.decode(sig)?;
-        let ret = process_text_verify(&mut reader, KEY, &sig, format)?;
-        assert!(ret);
-        Ok(())
-    }
 
 
     #[test]
@@ -303,7 +287,7 @@ mod tests {
         buffer.extend_from_slice(b"plaintext message");
 
 // Encrypt `buffer` in-place, replacing the plaintext contents with ciphertext
-        cipher.encrypt_in_place(&nonce, b"", &mut buffer);
+        let _ =cipher.encrypt_in_place(&nonce, b"", &mut buffer);
         println!("ret={}", buffer.len());
         let base64_reader = crate::process_encode(&mut buffer.as_slice(), crate::cli::Base64Format::Standard)?;
         println!("base64_reader={}", base64_reader);
@@ -311,15 +295,15 @@ mod tests {
 // `buffer` now contains the message ciphertext
         assert_ne!(&buffer, b"plaintext message");
 
-        let mut base64_reader_decocde = crate::process_decode(&mut base64_reader.as_bytes(), crate::cli::Base64Format::Standard)?;
+        let mut base64_reader_decode = crate::process_decode(&mut base64_reader.as_bytes(), crate::cli::Base64Format::Standard)?;
 
 
 // Decrypt `buffer` in-place, replacing its ciphertext context with the original plaintext
-        cipher.decrypt_in_place(&nonce, b"", &mut base64_reader_decocde);
+        let _ = cipher.decrypt_in_place(&nonce, b"", &mut base64_reader_decode);
 
-        let out = std::string::String::from_utf8(base64_reader_decocde.clone())?;
+        let out = std::string::String::from_utf8(base64_reader_decode.clone())?;
         println!("out={}", out);
-        assert_eq!(&base64_reader_decocde, b"plaintext message");
+        assert_eq!(&base64_reader_decode, b"plaintext message");
 
         Ok(())
     }

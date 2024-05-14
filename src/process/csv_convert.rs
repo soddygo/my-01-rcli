@@ -1,7 +1,9 @@
 use std::fs;
+
 use anyhow::Result;
 use csv::Reader;
 use serde::{Deserialize, Serialize};
+
 use crate::cli::OutputFormat;
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -37,6 +39,6 @@ pub fn process_csv(input: &str, output: String, format: OutputFormat) -> Result<
     };
 
     fs::write(output, content)?;
-    
+
     Ok(())
 }
