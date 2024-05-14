@@ -64,3 +64,12 @@ http://127.0.0.1:8080/dir/fixtures
 cargo run text chip-generate --output-path ./fixtures
 ```
 
+加密测试,控制台会输出加密后的base64字符,./fixtures/nonce.txt是nonce
+```shell
+cargo run text encrypt --key ./fixtures/ChaCha20Poly1305.txt --nonce-output-path ./fixtures  --input ./fixtures/chacha20input.text
+```
+
+解密测试,控制台会输出解密后的base64字符,./fixtures/nonce.txt是上次加密的nonce
+```shell
+cargo run text decrypt --key ./fixtures/ChaCha20Poly1305.txt --nonce-input-path ./fixtures/nonce.txt
+```

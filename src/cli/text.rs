@@ -1,15 +1,16 @@
 use std::fmt::Display;
 use std::path::PathBuf;
 use std::str::FromStr;
-use clap::Parser;
-use enum_dispatch::enum_dispatch;
 
 use anyhow::Result;
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use clap::Parser;
+use enum_dispatch::enum_dispatch;
 use tokio::fs;
-use crate::{CmdExecutor, get_content, get_reader, process_text_key_generate, process_text_sign, process_text_verify,
-            process_text_encrypt, process_text_decrypt, process_text_chip_key_generate,
+
+use crate::{CmdExecutor, get_content, get_reader, process_text_chip_key_generate, process_text_decrypt, process_text_encrypt,
+            process_text_key_generate, process_text_sign, process_text_verify,
 };
 
 use super::verify_file;
@@ -41,8 +42,8 @@ pub struct EncryptOpts {
     pub input: String,
     #[arg(long, value_parser = verify_file,)]
     pub key: String,
-    #[arg(long, value_parser = verify_file,  help = "none file path,unique per message")]
-    pub nonce: String,
+    #[arg(long, value_parser = verify_path, help = "none file path,unique per message")]
+    pub nonce_output_path: PathBuf,
     #[arg(long, default_value = "chacha20-poly1305", value_parser = parse_text_chip_format)]
     pub format: TextChipFormat,
 }
@@ -53,8 +54,8 @@ pub struct DecryptOpts {
     pub input: String,
     #[arg(long, value_parser = verify_file,)]
     pub key: String,
-    #[arg(long, value_parser = verify_file,  help = "none file path,unique per message")]
-    pub nonce: String,
+    #[arg(long, value_parser = verify_file, help = "none file path,unique per message")]
+    pub nonce_input_path: String,
     #[arg(long, default_value = "chacha20-poly1305", value_parser = parse_text_chip_format)]
     pub format: TextChipFormat,
 }
@@ -106,7 +107,7 @@ pub struct ChipKeyGenerateOpts {
 
 #[derive(Debug, Copy, Clone)]
 pub enum TextChipFormat {
-    ChaCha20Poly1305,
+    ChaCha20Poly1305Format,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -140,7 +141,7 @@ impl FromStr for TextChipFormat {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "chacha20-poly1305" => Ok(TextChipFormat::ChaCha20Poly1305),
+            "chacha20-poly1305" => Ok(TextChipFormat::ChaCha20Poly1305Format),
             _ => Err(anyhow::anyhow!("Invalid format"))
         }
     }
@@ -149,7 +150,7 @@ impl FromStr for TextChipFormat {
 impl From<TextChipFormat> for &str {
     fn from(format: TextChipFormat) -> Self {
         match format {
-            TextChipFormat::ChaCha20Poly1305 => {
+            TextChipFormat::ChaCha20Poly1305Format => {
                 "chacha20-poly1305"
             }
         }
@@ -223,12 +224,15 @@ impl CmdExecutor for EncryptOpts {
         let mut reader = get_reader(&self.input)?;
 
         let key = get_content(&self.key)?;
-        let content = process_text_encrypt(&mut reader, &key, self.format)?;
+
+        let (content, _nonce) = process_text_encrypt(&mut reader, &key, self.format)?;
+
         //转base64 打印
         let base64 = crate::process_encode(&mut content.as_slice(), crate::cli::Base64Format::Standard)?;
-
-
         println!("{}", base64);
+
+        //输出 _nonce 内容到文件里,用于下次解密使用
+        fs::write(self.nonce_output_path.join("nonce.txt"), _nonce).await?;
 
         Ok(())
     }
@@ -242,8 +246,9 @@ impl CmdExecutor for DecryptOpts {
 
 
         let key = get_content(&self.key)?;
+        let nonce = get_content(&self.nonce_input_path)?;
 
-        let content = process_text_decrypt(reader_venc, &key, self.format)?;
+        let content = process_text_decrypt(reader_venc, &key, &nonce, self.format)?;
 
         //转utf8字符串
 
