@@ -242,13 +242,13 @@ impl CmdExecutor for DecryptOpts {
     async fn execute(self) -> Result<()> {
         let mut base64_reader = get_reader(&self.input)?;
         //base64解码
-        let mut reader_venc = crate::process_decode(&mut base64_reader, crate::cli::Base64Format::Standard)?;
+        let  reader_venc = crate::process_decode(&mut base64_reader, crate::cli::Base64Format::Standard)?;
 
 
         let key = get_content(&self.key)?;
         let nonce = get_content(&self.nonce_input_path)?;
 
-        let content = process_text_decrypt(reader_venc, &key, &nonce, self.format)?;
+        let content = process_text_decrypt(reader_venc, key, nonce, self.format)?;
 
         //转utf8字符串
 

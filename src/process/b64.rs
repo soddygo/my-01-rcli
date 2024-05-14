@@ -1,8 +1,10 @@
 use std::io::Read;
-use crate::cli::Base64Format;
+
 use anyhow::Result;
 use base64::Engine;
 use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
+
+use crate::cli::Base64Format;
 
 pub fn process_encode(reader: &mut dyn Read, format: Base64Format) -> Result<String> {
     let mut buf = Vec::new();
@@ -31,6 +33,7 @@ pub fn process_decode(reader: &mut dyn Read, format: Base64Format) -> Result<Vec
 #[cfg(test)]
 mod tests {
     use crate::get_reader;
+
     use super::*;
 
     #[test]

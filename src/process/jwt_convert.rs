@@ -1,7 +1,7 @@
 use std::io::Read;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use jsonwebtoken::{decode, DecodingKey, encode, EncodingKey, Header, Validation};
+
 use anyhow::Result;
+use jsonwebtoken::{decode, DecodingKey, encode, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 
 pub trait JwtEncoder {
@@ -53,8 +53,7 @@ impl JwtEncoderWrapper {
     pub fn try_new(key: String, algorithm: crate::cli::AlgorithmFormat, exp: u64) -> Result<Self> {
         let header = match algorithm {
             crate::cli::AlgorithmFormat::HS256 => {
-                let header = Header::new(jsonwebtoken::Algorithm::HS256);
-                header
+                Header::new(jsonwebtoken::Algorithm::HS256)
             }
         };
 
@@ -76,10 +75,7 @@ impl JwtEncoderWrapper {
 impl JwtDecoderWrapper {
     pub fn try_new(key: String, algorithm: crate::cli::AlgorithmFormat) -> Result<Self> {
         let validation = match algorithm {
-            crate::cli::AlgorithmFormat::HS256 => {
-                let validation = Validation::new(jsonwebtoken::Algorithm::HS256);
-                validation
-            }
+            crate::cli::AlgorithmFormat::HS256 => Validation::new(jsonwebtoken::Algorithm::HS256),
         };
 
         let key = DecodingKey::from_secret(key.as_bytes());
@@ -115,7 +111,7 @@ impl JwtEncoder for JwtEncoderWrapper {
 impl JwtDecoder for JwtDecoderWrapper {
     fn decode<U: Read>(&self, data: &mut U) -> Result<String> {
         let mut buffer = Vec::new();
-        data.read_to_end(&mut buffer);
+        let _ = data.read_to_end(&mut buffer);
         let token = String::from_utf8(buffer)?;
         let token_message = decode::<JwtPlayerData>(&token, &self.key, &self.validation);
         match token_message {
@@ -134,19 +130,21 @@ impl JwtDecoder for JwtDecoderWrapper {
 impl JwtVerify for JwtDecoderWrapper {
     fn verify<U: Read>(&self, data: &mut U) -> Result<bool> {
         let result = self.decode(data);
-        return if result.is_ok() {
+        if result.is_ok() {
             Ok(true)
         } else {
             Ok(false)
-        };
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
-    use jsonwebtoken::{Algorithm, decode, DecodingKey, encode, EncodingKey, Header, Validation};
+
     use anyhow::Result;
+    use jsonwebtoken::{Algorithm, decode, DecodingKey, encode, EncodingKey, Header, Validation};
+
     use crate::JwtPlayerData;
 
     #[test]
@@ -158,12 +156,12 @@ mod tests {
         let header = Header::new(algorithm);
 
 
-        let exp = (SystemTime::now()
+        let exp = SystemTime::now()
             .checked_add(Duration::from_days(1))
             .unwrap()
             .duration_since(UNIX_EPOCH)
             .unwrap()
-            .as_secs());
+            .as_secs();
 
         let jwt_player_data = JwtPlayerData::new("hello world".to_string(), exp);
 

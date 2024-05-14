@@ -22,12 +22,12 @@ cargo run base64 decode --input ./fixtures/b64_decode.txt
 
 generate
 ```shell
-cargo run text generate --output-path ./fixtures/ 
+cargo run text generate --output-path ./fixtures/
 ```
 
 sign
 ```shell
-cargo run text sign --input ./fixtures/b64.txt --key ./fixtures/blake3.txt 
+cargo run text sign --input ./fixtures/b64.txt --key ./fixtures/blake3.txt
 ```
 
 verify
@@ -39,7 +39,7 @@ cargo run text verify --input ./fixtures/b64.txt --key ./fixtures/blake3.txt  --
 
 server start
 ```shell
- cargo run http server  
+ cargo run http server
 
 ```
 
