@@ -56,6 +56,8 @@ cargo run jwt decode --data eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJkYXRhIjoiaGV
 cargo run jwt verify --data eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJkYXRhIjoiaGVsbG8gd29ybGQiLCJleHAiOjE3MTU3NjMwMjh9.YE-4ZBDj5QnvxwCC7F2i_UkbWvHcMYxSoQ1-Hs3u0is --secret ./fixtures/jwt_secret.txt
 ```
 
+![img.png](img.png)
+
 ## 环境设置
 
 ### 安装 Rust
