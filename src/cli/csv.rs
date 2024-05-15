@@ -3,8 +3,8 @@ use std::str::FromStr;
 
 use clap::Parser;
 
-use crate::CmdExecutor;
 use crate::process_csv;
+use crate::CmdExecutor;
 
 use super::verify_file;
 
@@ -30,7 +30,6 @@ pub struct CsvOpts {
 
     #[arg(long, default_value_t = true)]
     pub header: bool,
-
 }
 
 impl CmdExecutor for CsvOpts {
@@ -49,7 +48,6 @@ fn parse_format(format: &str) -> Result<OutputFormat, anyhow::Error> {
     format.parse()
 }
 
-
 impl From<OutputFormat> for &str {
     fn from(format: OutputFormat) -> Self {
         match format {
@@ -66,11 +64,10 @@ impl FromStr for OutputFormat {
         match s {
             "json" => Ok(OutputFormat::Json),
             "yaml" => Ok(OutputFormat::Yaml),
-            _ => Err(anyhow::anyhow!("Invalid format"))
+            _ => Err(anyhow::anyhow!("Invalid format")),
         }
     }
 }
-
 
 impl Display for OutputFormat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

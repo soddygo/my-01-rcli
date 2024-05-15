@@ -17,7 +17,6 @@ pub enum Base64SubCommand {
     Decode(Base64DecodeOpts),
 }
 
-
 #[derive(Debug, Parser)]
 pub struct Base64EncodeOpts {
     #[arg(long, value_parser = verify_file, default_value = "-")]
@@ -34,13 +33,11 @@ pub struct Base64DecodeOpts {
     pub format: Base64Format,
 }
 
-
 #[derive(Debug, Clone, Copy)]
 pub enum Base64Format {
     Standard,
     UrlSafe,
 }
-
 
 fn parse_base64_format(format: &str) -> Result<Base64Format, anyhow::Error> {
     format.parse()
@@ -58,7 +55,6 @@ impl FromStr for Base64Format {
     }
 }
 
-
 impl From<Base64Format> for &str {
     fn from(format: Base64Format) -> Self {
         match format {
@@ -73,7 +69,6 @@ impl Display for Base64Format {
         write!(f, "{}", Into::<&str>::into(*self))
     }
 }
-
 
 impl CmdExecutor for Base64EncodeOpts {
     async fn execute(self) -> anyhow::Result<()> {

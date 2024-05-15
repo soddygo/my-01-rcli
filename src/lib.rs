@@ -8,8 +8,8 @@ pub use utils::*;
 
 mod utils;
 
-mod process;
 mod cli;
+mod process;
 
 #[allow(async_fn_in_trait)]
 #[enum_dispatch]

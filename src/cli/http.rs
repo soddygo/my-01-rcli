@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use clap::Parser;
 use enum_dispatch::enum_dispatch;
 
-use crate::{CmdExecutor, process_http_server};
+use crate::{process_http_server, CmdExecutor};
 
 use super::verify_path;
 
@@ -14,7 +14,6 @@ pub enum HttpSubCommand {
     Server(HttpServerOpts),
 }
 
-
 #[derive(Debug, Parser)]
 pub struct HttpServerOpts {
     #[arg(short, long, value_parser = verify_path, default_value = ".")]
@@ -22,7 +21,6 @@ pub struct HttpServerOpts {
     #[arg(short, long, default_value_t = 8080)]
     pub port: u16,
 }
-
 
 impl CmdExecutor for HttpSubCommand {
     async fn execute(self) -> anyhow::Result<()> {

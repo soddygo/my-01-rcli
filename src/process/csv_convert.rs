@@ -18,7 +18,6 @@ struct Player {
     kit: u8,
 }
 
-
 pub fn process_csv(input: &str, output: String, format: OutputFormat) -> Result<()> {
     let mut reader = Reader::from_path(input)?;
     let header = reader.headers()?.clone();
@@ -26,7 +25,8 @@ pub fn process_csv(input: &str, output: String, format: OutputFormat) -> Result<
 
     for result in reader.records() {
         let record = result?;
-        let json_value = header.iter()
+        let json_value = header
+            .iter()
             .zip(record.iter())
             .collect::<serde_json::Value>();
 

@@ -5,12 +5,12 @@ use enum_dispatch::enum_dispatch;
 
 pub use self::{base64::*, csv::*, genpass::*, http::*, jwt::*, text::*};
 
-mod csv;
 mod base64;
-mod text;
+mod csv;
 mod genpass;
 mod http;
 mod jwt;
+mod text;
 
 #[derive(Debug, Parser)]
 #[command(name = "my-rcli", author, version, about, long_about = None)]

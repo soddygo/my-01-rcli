@@ -3,14 +3,16 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use anyhow::Result;
-use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use base64::Engine;
 use clap::Parser;
 use enum_dispatch::enum_dispatch;
 use tokio::fs;
 
-use crate::{CmdExecutor, get_content, get_reader, process_text_chip_key_generate, process_text_decrypt, process_text_encrypt,
-            process_text_key_generate, process_text_sign, process_text_verify,
+use crate::{
+    get_content, get_reader, process_text_chip_key_generate, process_text_decrypt,
+    process_text_encrypt, process_text_key_generate, process_text_sign, process_text_verify,
+    CmdExecutor,
 };
 
 use super::verify_file;
@@ -33,7 +35,6 @@ pub enum TextSubCommand {
 
     #[command(about = "decrypt a text with a private/session key")]
     Decrypt(DecryptOpts),
-
 }
 
 #[derive(Debug, Parser)]
@@ -84,7 +85,6 @@ pub struct TextVerifyOpts {
     pub format: TextSignFormat,
 }
 
-
 #[derive(Debug, Parser)]
 pub struct KeyGenerateOpts {
     #[arg(long, default_value = "blake3", value_parser = parse_text_sign_format)]
@@ -92,7 +92,6 @@ pub struct KeyGenerateOpts {
 
     #[arg(long, value_parser = verify_path)]
     pub output_path: PathBuf,
-
 }
 
 #[derive(Debug, Parser)]
@@ -102,7 +101,6 @@ pub struct ChipKeyGenerateOpts {
 
     #[arg(long, value_parser = verify_path)]
     pub output_path: PathBuf,
-
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -131,7 +129,7 @@ impl FromStr for TextSignFormat {
         match s {
             "blake3" => Ok(TextSignFormat::Blake3),
             "ed25519" => Ok(TextSignFormat::Ed25519),
-            _ => Err(anyhow::anyhow!("Invalid format"))
+            _ => Err(anyhow::anyhow!("Invalid format")),
         }
     }
 }
@@ -142,7 +140,7 @@ impl FromStr for TextChipFormat {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "chacha20-poly1305" => Ok(TextChipFormat::ChaCha20Poly1305Format),
-            _ => Err(anyhow::anyhow!("Invalid format"))
+            _ => Err(anyhow::anyhow!("Invalid format")),
         }
     }
 }
@@ -150,9 +148,7 @@ impl FromStr for TextChipFormat {
 impl From<TextChipFormat> for &str {
     fn from(format: TextChipFormat) -> Self {
         match format {
-            TextChipFormat::ChaCha20Poly1305Format => {
-                "chacha20-poly1305"
-            }
+            TextChipFormat::ChaCha20Poly1305Format => "chacha20-poly1305",
         }
     }
 }
@@ -160,12 +156,8 @@ impl From<TextChipFormat> for &str {
 impl From<TextSignFormat> for &str {
     fn from(format: TextSignFormat) -> Self {
         match format {
-            TextSignFormat::Blake3 => {
-                "blake3"
-            }
-            TextSignFormat::Ed25519 => {
-                "ed25519"
-            }
+            TextSignFormat::Blake3 => "blake3",
+            TextSignFormat::Ed25519 => "ed25519",
         }
     }
 }
@@ -228,7 +220,8 @@ impl CmdExecutor for EncryptOpts {
         let (content, _nonce) = process_text_encrypt(&mut reader, &key, self.format)?;
 
         //转base64 打印
-        let base64 = crate::process_encode(&mut content.as_slice(), crate::cli::Base64Format::Standard)?;
+        let base64 =
+            crate::process_encode(&mut content.as_slice(), crate::cli::Base64Format::Standard)?;
         println!("{}", base64);
 
         //输出 _nonce 内容到文件里,用于下次解密使用
@@ -242,8 +235,8 @@ impl CmdExecutor for DecryptOpts {
     async fn execute(self) -> Result<()> {
         let mut base64_reader = get_reader(&self.input)?;
         //base64解码
-        let  reader_venc = crate::process_decode(&mut base64_reader, crate::cli::Base64Format::Standard)?;
-
+        let reader_venc =
+            crate::process_decode(&mut base64_reader, crate::cli::Base64Format::Standard)?;
 
         let key = get_content(&self.key)?;
         let nonce = get_content(&self.nonce_input_path)?;

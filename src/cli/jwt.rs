@@ -20,7 +20,6 @@ pub enum JwtSubCommand {
 
     #[command(name = "verify", about = "verify jwt")]
     Verify(VerifyOpts),
-
 }
 
 #[derive(Debug, Parser)]
@@ -33,7 +32,6 @@ pub struct VerifyOpts {
         long, default_value = "HS256", value_parser = parse_algorithm_format, value_name = "默认HS256,暂时只支持这1种"
     )]
     pub algorithm: AlgorithmFormat,
-
 }
 
 #[derive(Debug, Parser)]
@@ -48,7 +46,6 @@ pub struct JwtEncodeOpts {
     //时间戳
     #[arg(long, default_value = "1d", value_parser = parse_exp_time)]
     pub exp: u64,
-
 }
 
 #[derive(Debug, Parser)]
@@ -66,18 +63,15 @@ pub enum AlgorithmFormat {
     HS256,
 }
 
-
 fn parse_algorithm_format(algorithm_format: &str) -> Result<AlgorithmFormat, anyhow::Error> {
     algorithm_format.parse()
 }
 
 fn parse_exp_time(exp_time: &str) -> Result<u64> {
-
     //todo! exp_time 单位暂时支持天,例如:1d,标识1天
     let exp_time_d = exp_time.replace("d", "");
 
     let exp_day = exp_time_d.parse::<u64>().unwrap();
-
 
     let unix_time = SystemTime::now()
         .checked_add(Duration::from_days(exp_day))
@@ -95,7 +89,7 @@ impl FromStr for AlgorithmFormat {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "HS256" => Ok(AlgorithmFormat::HS256),
-            _ => Err(anyhow::anyhow!("Invalid format"))
+            _ => Err(anyhow::anyhow!("Invalid format")),
         }
     }
 }
@@ -118,7 +112,8 @@ impl Display for AlgorithmFormat {
 
 impl CmdExecutor for JwtEncodeOpts {
     async fn execute(self) -> anyhow::Result<()> {
-        let jwt_encoder_wrapper = JwtEncoderWrapper::try_new(self.secret, self.algorithm, self.exp)?;
+        let jwt_encoder_wrapper =
+            JwtEncoderWrapper::try_new(self.secret, self.algorithm, self.exp)?;
 
         let ret = jwt_encoder_wrapper.encode(self.data.clone())?;
         println!("{}", ret);
@@ -138,7 +133,7 @@ impl CmdExecutor for JwtDecodeOpts {
     }
 }
 
-impl CmdExecutor for VerifyOpts{
+impl CmdExecutor for VerifyOpts {
     async fn execute(self) -> Result<()> {
         let jwt_decoder_wrapper = JwtDecoderWrapper::try_new(self.secret, self.algorithm)?;
 
@@ -146,6 +141,5 @@ impl CmdExecutor for VerifyOpts{
         println!("{}", ret);
 
         Ok(())
-
     }
 }
